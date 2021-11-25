@@ -83,6 +83,9 @@ class DeltaCatalog extends DelegatingCatalogExtension
       writeOptions: Map[String, String],
       sourceQuery: Option[DataFrame],
       operation: TableCreationModes.CreationMode): Table = {
+    // scalastyle:off
+    println("createDeltaTable: " + allTableProperties)
+    println("writeOptions: " + writeOptions)
     // These two keys are tableProperties in data source v2 but not in v1, so we have to filter
     // them out. Otherwise property consistency checks will fail.
     val tableProperties = allTableProperties.asScala.filterKeys {
@@ -201,13 +204,27 @@ class DeltaCatalog extends DelegatingCatalogExtension
       schema: StructType,
       partitions: Array[Transform],
       properties: util.Map[String, String]): Table = {
+    // new RuntimeException("sql? + " + properties).printStackTrace(System.out)
     if (DeltaSourceUtils.isDeltaDataSourceName(getProvider(properties))) {
+      val optionsThroughProperties = properties.asScala.collect {
+        case (k, _) if k.startsWith("option.") => k.stripPrefix("option.")
+      }.toSet
+      val sqlWriteOptions = new util.HashMap[String, String]()
+      val newProps = new util.HashMap[String, String]()
+      properties.asScala.foreach { case (k, v) =>
+        if (!k.startsWith("option.") && !optionsThroughProperties.contains(k)) {
+          // Do not add to properties
+          newProps.put(k, v)
+        } else if (optionsThroughProperties.contains(k)) {
+          sqlWriteOptions.put(k, v)
+        }
+      }
       createDeltaTable(
         ident,
         schema,
         partitions,
-        properties,
-        Map.empty,
+        newProps,
+        sqlWriteOptions.asScala.toMap,
         sourceQuery = None,
         TableCreationModes.Create)
     } else {
@@ -369,6 +386,10 @@ class DeltaCatalog extends DelegatingCatalogExtension
           sqlWriteOptions.put(k, v)
         }
       }
+      // scalastyle:off
+      println("properties: " + properties)
+      println("writeOptions: " + writeOptions)
+      println("sqlWriteOptions: " + sqlWriteOptions)
       if (writeOptions.isEmpty && !sqlWriteOptions.isEmpty) {
         writeOptions = sqlWriteOptions.asScala.toMap
       }

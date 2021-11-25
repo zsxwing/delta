@@ -209,6 +209,8 @@ private class WriteIntoDeltaBuilder(
     log: DeltaLog,
     writeOptions: CaseInsensitiveStringMap)
   extends WriteBuilder with SupportsOverwrite with SupportsTruncate {
+  // scalastyle:off
+  println("WriteIntoDeltaBuilder.writeOptions: " + writeOptions.asCaseSensitiveMap().entrySet())
 
   private var forceOverwrite = false
 

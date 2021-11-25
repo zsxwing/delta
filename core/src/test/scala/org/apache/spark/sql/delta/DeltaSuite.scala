@@ -54,6 +54,59 @@ class DeltaSuite extends QueryTest
     }
   }
 
+  test("foo") {
+    withTable("mytab") {
+      withTempDir { path =>
+        spark.range(10).write
+          .format("delta")
+          .option("path", path.getCanonicalPath)
+          .option("mergeSchema", "true")
+          .option("delta.appendOnly", "true")
+          .saveAsTable("mytab")
+        var deltaLog = DeltaLog.forTable(spark, path)
+        println(deltaLog.snapshot.metadata.configuration)
+        spark.range(10).write
+          .format("delta")
+          .mode("append")
+          .option("path", path.getCanonicalPath)
+          .option("mergeSchema", "true")
+          .option("delta.sampleRetentionDuration", "true")
+          .saveAsTable("mytab")
+        deltaLog = DeltaLog.forTable(spark, path)
+        println(deltaLog.snapshot.metadata.configuration)
+      }
+    }
+  }
+
+  test("foo2") {
+    withTempDir { path =>
+      spark.range(10).write
+        .format("delta")
+        .option("mergeSchema", "true")
+        .option("delta.appendOnly", "true")
+        .save(path.getCanonicalPath)
+      val deltaLog = DeltaLog.forTable(spark, path)
+      println(deltaLog.snapshot.metadata.configuration)
+    }
+  }
+
+  test("foo3") {
+    withTempDir { path =>
+      spark.range(10).writeTo(s"delta.`${path.getCanonicalPath}`")
+        .using("delta")
+        .option("mergeSchema", "true")
+        .option("delta.sampleRetentionDuration", "123 days")
+        .create()
+      spark.range(10).writeTo(s"delta.`${path.getCanonicalPath}`")
+        .using("delta")
+        .option("mergeSchema", "true")
+        .option("delta.appendOnly", "true")
+        .replace()
+      val deltaLog = DeltaLog.forTable(spark, path)
+      println(deltaLog.snapshot.metadata.configuration)
+    }
+  }
+
   test("handle partition filters and data filters") {
     withTempDir { inputDir =>
       val testPath = inputDir.getCanonicalPath
